@@ -1,0 +1,28 @@
+<!-- templates/login.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vastu Drishti - Advanced Computer Vision Platform</title>
+    <link rel="stylesheet" href="static/css/login_style.css">
+</head>
+<body>
+    <div class="container" onclick="yourFunction()">
+        <div class="top">
+        </div>
+        <div class="bottom"></div>
+        <div class="center">
+            <form method="post">
+                <img src="{{ url_for('static', filename='assets/Logo.png') }}" alt="Logo" class="logo">
+                <h2 style="margin-left: 20px; margin-bottom: 5px;">Khate Mein Pravesh Karein</h2>
+                <input type="email" placeholder="Email">
+                <input type="password" placeholder="Password">
+                <a href="/index">
+                    <button type="button">Login</button>
+                </a>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

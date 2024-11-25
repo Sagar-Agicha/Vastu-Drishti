@@ -1,0 +1,1641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vastu Drishti - Advanced Computer Vision Platform</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <script src="{{ url_for('static', filename='js/main.js') }}" defer></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: 'Roboto', sans-serif;
+            background-color: #91aec1  !important;
+            color: #333 !important;
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            color: #2c3e50;
+            font-family: 'Roboto', sans-serif;
+        }
+
+        p {
+            color: #34495e;
+            font-family: 'Roboto', sans-serif;
+        }
+
+        .nav-link {
+            color: #ecf0f1;
+        }
+
+        .nav-link:hover {
+            color: #3498db;
+        }
+
+        #container {
+            display: grid;
+            grid-template-columns: 250px 1fr 300px;
+            gap: 20px;
+            max-width: 1600px;
+            margin: 0 auto;
+            min-height: calc(100vh - 40px);
+        }
+
+        .panel {
+            background:#c8dbe0 !important;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            padding: 20px;
+            height: fit-content;
+        }
+
+        .upload-label {
+            background-color: #91aec1 !important;
+            border: 2px dashed #394867;
+            color: #94a3b8 !important;
+        }
+
+        #canvas-container {
+            background-color: #91aec1 !important;
+            border: 1px solid #394867;
+        }
+
+        #annotationTable th {
+            background-color: #91aec1 !important;
+            color: #94a3b8 !important;
+        }
+
+        #annotationTable td {
+            color: #91aec1 !important;
+            border-bottom: 1px solid #394867;
+        }
+
+        .notification {
+            background-color: #16213e !important;
+            color: #94a3b8 !important;
+        }
+
+        input, select {
+            background-color: #1f2937 !important;
+            color: #94a3b8 !important;
+            border: 1px solid #394867 !important;
+        }
+
+        #testProgress, #trainingProgress {
+            background-color: #16213e !important;
+            color: #94a3b8 !important;
+        }
+
+        .nav-btn {
+            background-color: #4a90e2;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+        }
+
+        .nav-btn:hover {
+            background-color: #357abd;
+        }
+
+        .clear-btn {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 4px;
+        }
+
+        .clear-btn:hover {
+            background-color: #c82333;
+        }
+
+        .train-btn {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+        }
+
+        .train-btn:hover {
+            background-color: #218838;
+        }
+
+        .popup {
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+
+        .popup-content {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        #confirmClass {
+            background-color: #28a745;
+            color: white;
+        }
+
+        #cancelAnnotation {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .frame-input {
+            margin-top: 10px;
+            padding: 5px;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            width: 100px;
+        }
+
+        #frameCountContainer {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+        }
+
+        #videoUploadControls {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+        }
+
+        .frame-input-container {
+            margin-bottom: 10px;
+        }
+
+        .training-panel {
+            margin-top: 20px;
+        }
+
+        #trainingProgress {
+            background-color: #ffffff;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 10px;
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #e5e7eb;
+            padding-bottom: 10px;
+        }
+
+        .metrics-container {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+
+        .metric {
+            background-color: #f8f9fa;
+            padding: 12px;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .metric label {
+            font-weight: 500;
+            color: #495057;
+        }
+
+        .metric span {
+            font-family: monospace;
+            color: #2563eb;
+            font-weight: 500;
+        }
+
+        .epoch-counter {
+            font-size: 14px;
+            color: #6b7280;
+            font-weight: 500;
+        }
+
+        .test-section {
+            margin: 20px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+
+        .test-controls {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .upload-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .test-btn {
+            padding: 10px 20px;
+            background-color: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .test-btn:hover {
+            background-color: #1976D2;
+        }
+
+        /* Test Panel Styling */
+        .test-panel {
+            margin-top: 20px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        .test-content {
+            padding: 20px;
+        }
+
+        .test-upload-section {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .test-upload-card {
+            flex: 1;
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+            border: 2px dashed #e2e8f0;
+        }
+
+        .test-upload-card:hover {
+            border-color: #3b82f6;
+            transform: translateY(-2px);
+        }
+
+        .test-upload-card i {
+            font-size: 2rem;
+            color: #64748b;
+            margin-bottom: 10px;
+        }
+
+        .test-upload-card h3 {
+            color: #334155;
+            margin: 10px 0;
+            font-size: 1.1rem;
+        }
+
+        .test-upload-label {
+            display: inline-block;
+            padding: 8px 16px;
+            background: #3b82f6;
+            color: white;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+            font-weight: 500;
+            margin-top: 10px;
+        }
+
+        .test-upload-label:hover {
+            background: #2563eb;
+        }
+
+        .test-upload-label input {
+            display: none;
+        }
+
+        .test-actions {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        .test-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.95rem;
+        }
+
+        .test-btn i {
+            font-size: 1rem;
+        }
+
+        .test-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .test-btn:active {
+            transform: translateY(0);
+        }
+
+        #startTesting {
+            background: #10b981;
+            color: white;
+        }
+
+        #startTesting:hover {
+            background: #059669;
+        }
+
+        .download-btn {
+            background: #6366f1;
+            color: white;
+        }
+
+        .download-btn:hover {
+            background: #4f46e5;
+        }
+
+        .download-btn:disabled {
+            background: #cbd5e1;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        #retrainingBtn {
+            flex: 1;
+            max-width: 200px;
+            padding: 15px 25px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        #retrainingBtn:hover {
+            background-color: #e0a800;
+        }
+
+        #retrainingBtn:disabled {
+            background-color: #e9ecef;
+            cursor: not-allowed;
+        }
+
+        /* Control panel styling */
+        .control-panel {
+            margin: 20px 0;
+            display: flex;
+            justify-content: center;
+        }
+
+        .button-stack {
+            display: flex;
+            gap: 15px;  /* Consistent spacing between buttons */
+            align-items: center;
+        }
+
+        /* Common button styles */
+        .control-btn {
+            min-width: 180px;  /* Fixed minimum width for all buttons */
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            height: 40px;  /* Fixed height for all buttons */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Clear button specific style */
+        .clear-btn {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .clear-btn:hover {
+            background-color: #c82333;
+        }
+
+        /* Train button specific style */
+        .train-btn {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .train-btn:hover {
+            background-color: #218838;
+        }
+
+        /* Retrain button specific style */
+        .retrain-btn {
+            background-color: #ffc107;
+            color: #000;
+        }
+
+        .retrain-btn:hover {
+            background-color: #e0a800;
+        }
+
+        /* Disabled state for all buttons */
+        .control-btn:disabled {
+            background-color: #e9ecef;
+            cursor: not-allowed;
+            color: #6c757d;
+        }
+
+        /* Add these styles for the progress bar */
+        .progress-bar-container {
+            width: 100%;
+            background-color: #f0f0f0;
+            border-radius: 4px;
+            margin: 15px 0;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            width: 0%;
+            height: 20px;
+            background-color: #4CAF50;
+            transition: width 1s ease;
+            position: relative;
+        }
+
+        .progress-text {
+            position: absolute;
+            width: 100%;
+            text-align: center;
+            color: white;
+            font-size: 12px;
+            line-height: 20px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+
+        .time-estimate {
+            text-align: right;
+            color: #666;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+
+        /* Add these header styles before existing styles */
+        .main-header {
+            background: #5976c5;
+            color: white;
+            padding: 2rem 0;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            text-align: center;
+        }
+
+        .header-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+
+        .header-subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            max-width: 600px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        /* Adjust existing container padding */
+        #container {
+            padding-top: 1rem;
+        }
+
+        .switch-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: #2196F3;
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+
+        /* Mode switch styling */
+        .mode-switch {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 15px 0;
+            padding: 10px;
+            background-color: #1f2937;
+            border-radius: 8px;
+        }
+
+        .mode-label {
+            color: #94a3b8;
+            font-size: 14px;
+            transition: color 0.3s ease;
+        }
+
+        .mode-label.active-mode {
+            color: #2196F3;
+            font-weight: 500;
+        }
+
+        /* Switch styling */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #394867;
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: #2196F3;
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+
+        /* Mode Toggle Styling */
+        .mode-toggle-container {
+            display: flex;
+            align-items: center;
+            background: #91aec1;
+            padding: 8px 16px;
+            border-radius: 6px;
+            border: 1px solid #394867;
+        }
+
+        .mode-toggle-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .mode-toggle-group i {
+            color: #94a3b8;
+            font-size: 14px;
+        }
+
+        .mode-label {
+            font-size: 14px;
+            font-weight: 500;
+            color: #94a3b8;
+        }
+
+        .mode-label.active-mode {
+            color: #60a5fa;
+        }
+
+        .mode-switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 22px;
+        }
+
+        .mode-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: #2196F3;
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+
+        /* Modern Toggle Switch Styling */
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+            position: absolute;
+        }
+
+        .toggle-label {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 200px;
+            height: 40px;
+            background: #91aec1;
+            border-radius: 8px;
+            border: 1px solid #394867;
+            cursor: pointer;
+            position: relative;
+            padding: 4px;
+        }
+
+        .mode {
+            width: 96px;
+            text-align: center;
+            font-size: 14px;
+            font-weight: 500;
+            z-index: 1;
+            color: #94a3b8;
+            transition: color 0.3s ease;
+        }
+
+        .toggle-button {
+            position: absolute;
+            left: 4px;
+            width: 96px;
+            height: calc(100% - 8px);
+            background: #3b82f6;
+            border-radius: 6px;
+            transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+        }
+
+        /* Switch states */
+        .toggle-switch input:checked + .toggle-label .toggle-button {
+            transform: translateX(96px);
+        }
+
+        .toggle-switch input:checked + .toggle-label .screenshot-mode {
+            color: white;
+        }
+
+        .toggle-switch input:not(:checked) + .toggle-label .ocr-mode {
+            color: white;
+        }
+
+        /* Hover effect */
+        .toggle-label:hover {
+            background: #2d3748;
+        }
+
+        .toggle-label:hover .toggle-button {
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.3);
+        }
+
+        .class-manager-panel {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1000;
+            min-width: 300px;
+            max-width: 400px;
+            display: none;
+            background: #1f2937 !important;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .class-manager-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 15px;
+            border-bottom: 1px solid #374151;
+        }
+
+        .refresh-btn {
+            background: none;
+            border: none;
+            color: #60a5fa;
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 4px;
+        }
+
+        .refresh-btn:hover {
+            background: #374151;
+        }
+
+        .class-list-container {
+            max-height: 400px;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .class-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .class-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            background: #374151;
+            border-radius: 4px;
+            color: #e5e7eb;
+        }
+
+        .class-name {
+            flex-grow: 1;
+        }
+
+        .delete-class-btn {
+            background: #dc2626;
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.875rem;
+        }
+
+        .delete-class-btn:hover {
+            background: #b91c1c;
+        }
+
+        .no-classes {
+            text-align: center;
+            color: #9ca3af;
+            padding: 20px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        .modal-content {
+            background-color: #1f2937;
+            margin: 15% auto;
+            padding: 20px;
+            border-radius: 8px;
+            width: 80%;
+            max-width: 500px;
+            position: relative;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #374151;
+        }
+
+        .modal-header h3 {
+            color: #e5e7eb;
+            margin: 0;
+        }
+
+        .close-btn {
+            color: #9ca3af;
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 0 5px;
+        }
+
+        .close-btn:hover {
+            color: #e5e7eb;
+        }
+
+        .class-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .class-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            margin-bottom: 8px;
+            background-color: #374151;
+            border-radius: 4px;
+        }
+
+        .class-name {
+            color: #e5e7eb;
+        }
+
+        .delete-btn {
+            background-color: #dc2626;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .delete-btn:hover {
+            background-color: #b91c1c;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+
+        .left-side-modal {
+            position: fixed;
+            left: 0;
+            top: 0;
+            height: 100%;
+            width: 350px;
+            margin: 0;
+            background-color: #1f2937;
+            border-right: 1px solid #374151;
+            animation: slideRight 0.3s ease-out;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            background-color: #111827;
+            border-bottom: 1px solid #374151;
+        }
+
+        .header-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #e5e7eb;
+        }
+
+        .header-title i {
+            color: #60a5fa;
+            font-size: 1.2em;
+        }
+
+        .header-title h3 {
+            margin: 0;
+            font-size: 1.2em;
+            font-weight: 600;
+        }
+
+        .close-btn {
+            color: #9ca3af;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        .close-btn:hover {
+            color: #e5e7eb;
+            background-color: #374151;
+        }
+
+        .modal-body {
+            padding: 20px;
+        }
+
+        .search-box {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        .search-box i {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #9ca3af;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 10px 10px 10px 35px;
+            border: 1px solid #374151;
+            border-radius: 6px;
+            background-color: #111827;
+            color: #e5e7eb;
+            font-size: 0.9em;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: #60a5fa;
+            box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.2);
+        }
+
+        .class-list {
+            max-height: calc(100vh - 180px);
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+
+        .class-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 15px;
+            margin-bottom: 8px;
+            background-color: #374151;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .class-item:hover {
+            background-color: #4b5563;
+            transform: translateX(2px);
+        }
+
+        .class-name {
+            color: #e5e7eb;
+            font-weight: 500;
+        }
+
+        .delete-btn {
+            background-color: #dc2626;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85em;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .delete-btn:hover {
+            background-color: #b91c1c;
+        }
+
+        .delete-btn i {
+            font-size: 0.9em;
+        }
+
+        @keyframes slideRight {
+            from {
+                transform: translateX(-100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        /* Scrollbar styling */
+        .class-list::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .class-list::-webkit-scrollbar-track {
+            background: #1f2937;
+        }
+
+        .class-list::-webkit-scrollbar-thumb {
+            background: #4b5563;
+            border-radius: 3px;
+        }
+
+        .class-list::-webkit-scrollbar-thumb:hover {
+            background: #60a5fa;
+        }
+
+        .test-stats {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .test-stat-card {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background-color: #ffffff;
+            border-radius: 6px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .stat-label {
+            font-weight: 500;
+            color: #495057;
+        }
+
+        .stat-count {
+            font-size: 14px;
+            color: #6b7280;
+            font-weight: 500;
+        }
+
+        .fade {
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out; /* Adjust duration as needed */
+        }
+
+        .fade-in {
+            opacity: 1;
+        }
+
+        /* Training Panel Styles */
+        .training-panel {
+            background: #c8dbe0 !important;  /* Match your panel background color */
+            border-radius: 10px;
+            padding: 20px;
+            margin: 40px auto;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            max-width: 1600px;
+        }
+
+        .training-controls {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .training-btn {
+            flex: 1;
+            max-width: 200px;
+            padding: 15px 25px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .train-btn {
+            background-color: #059669;
+            color: white;
+        }
+
+        .retrain-F {
+            background-color: #ffc107;
+            color: #000;
+            flex: 1;
+            max-width: 200px;
+            padding: 15px 25px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        #trainingProgress {
+            background: #91aec1 !important;  /* Match your theme */
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+
+        /* Adjust spacing between training panel and footer */
+        .footer {
+            margin-top: 40px;
+        }
+    </style>
+</head>
+<body class="fade">
+    <header class="main-header">
+        <div class="header-content">
+            <div class="logo-container">
+                <div class="logo-icon">
+                    <i class="fas fa-brain"></i>
+                    <i class="fas fa-eye overlay-icon"></i>
+                </div>
+                <div class="logo-text">
+                    <h1>Vastu Drishti</h1>
+                    <p class="header-subtitle">
+                        Advanced Computer Vision Training Platform
+                    </p>
+                </div>
+            </div>
+            <nav class="header-nav">
+                <a href="/" class="nav-link">
+                    <i class="fas fa-cog"></i> Logout
+                </a>
+            </nav>
+        </div>
+    </header>
+
+    <div id="container">
+        <!-- Left Section -->
+        <div id="left-section">
+            <div class="panel upload-section">
+                <h3 style="color: #0a1847 !important;">Upload Files</h3>
+                <div class="upload-buttons">
+                    <div class="upload-item">
+                        <label class="upload-label" for="imageUpload">
+                            <i class="icon">📷</i>
+                            <span style="color: #ffffff !important;">Image Upload</span>
+                            <input type="file" id="imageUpload" accept="image/*" multiple>
+                        </label>
+                    </div>
+                    <div class="upload-item">
+                        <label class="upload-label" for="videoUpload">
+                            <i class="icon">🎥</i>
+                            <span style="color: #ffffff !important;">Video Upload</span>
+                            <input type="file" id="videoUpload" accept="video/*" style="display: none;"/>
+                        </label>
+                                                <div id="videoUploadControls" style="display: none;">
+                            <button id="showDetailsBtn" class="details-btn">Show Details</button>
+                            <div id="videoDetails" class="video-details-container" style="display: none;">
+                                <!-- Details will be populated here -->
+                            </div>
+
+                            <div class="frame-input-container">
+                                <label for="frameCount" style="color: #000000 !important;" class="skip-seconds-label">
+                                    Interval Value:
+                                </label>
+                                <input type="number" id="frameCount" min="1" value="2" class="frame-input">
+                            </div>
+                            
+                            <div class="video-controls">
+                                <button id="processVideoBtn">Extract by Time Interval</button>
+                                <button id="processVideoByCountBtn">Extract by Frame Count</button>
+                            </div>
+                        </div>
+                    </div>
+<div class="upload-item">
+                        <label class="upload-label" for="pdfUpload">
+                            <i class="icon">📄</i>
+                            <span style="color: #ffffff !important;">PDF Upload</span>
+                            <input type="file" id="pdfUpload" accept="application/pdf" multiple>
+                        </label>
+                    </div>
+                    <div class="upload-item">
+                        <button id="clearImages" class="clear-images-btn">
+                            <i class="fas fa-trash-alt"></i>
+                            Clear All Images
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Center Section -->
+        <div id="center-section">
+            <div class="panel canvas-section">
+                <h3 style="color: #000000 !important;">Image Annotation</h3>
+                <div id="canvas-container">
+                    <canvas id="canvas"></canvas>
+                </div>
+                <div id="classPopup" class="popup" style="display: none;">
+                    <div class="popup-content">
+                        <h3>Select Class</h3>
+                        <input type="text" id="className" placeholder="Enter class name" list="existingClasses">
+                        <datalist id="existingClasses">
+                            <!-- Will be populated dynamically -->
+                        </datalist>
+                        <div class="popup-buttons">
+                            <button id="confirmClass">Confirm</button>
+                            <button id="cancelAnnotation">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="navigation-controls">
+                    <button id="prevImage" class="nav-btn">◀ Previous</button>
+                    <span id="imageCounter">Image 0 of 0</span>
+                    <button id="nextImage" class="nav-btn">Next ▶</button>
+                </div>
+            </div>
+
+            <div class="panel training-panel" style="max-width: 1600px; margin: 40px auto;">
+                <h3 style="color: #000000 !important;">Model Training</h3>
+                <div class="training-controls">
+                    <button id="startProcess" class="training-btn train-btn">
+                        <i class="fas fa-play"></i>
+                        Start Training
+                    </button>
+                    <button id="retrainingBtn" class="training-btn retrain-btn">
+                        <i class="fas fa-sync"></i>
+                        Start Retraining
+                    </button>
+                </div>
+                
+                <!-- Training Progress Section -->
+                <div id="trainingProgress" style="display: none;">
+                    <div class="progress-header">
+                        <h4>Training Progress</h4>
+                        <span class="epoch-counter">Epoch: 0/100</span>
+                    </div>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar">
+                            <span class="progress-text">0%</span>
+                        </div>
+                    </div>
+                    <div class="time-estimate">
+                        Estimated time remaining: <span id="timeRemaining">Calculating...</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Add the new beautified test section -->
+            <div class="panel test-panel">
+                <h3 style="color: #000000 !important;">Test Your Model</h3>
+                <div class="test-content">
+                    <div class="test-upload-section">
+                        <div class="test-upload-card">
+                            <i class="fas fa-image"></i>
+                            <h3>Test Images</h3>
+                            <label class="test-upload-label" for="testImage">
+                                <span>Upload Images</span>
+                                <input type="file" id="testImage" accept="image/*" multiple>
+                            </label>
+                        </div>
+                        <div class="test-upload-card">
+                            <i class="fas fa-video"></i>
+                            <h3>Test Video</h3>
+                            <label class="test-upload-label" for="testVideo">
+                                <span>Upload Video</span>
+                                <input type="file" id="testVideo" accept="video/*">
+                            </label>
+                        </div>
+<div class="test-upload-card">
+                            <i class="fas fa-file-pdf"></i>
+                            <h3>Test PDFs</h3>
+                            <label class="test-upload-label" for="testPdf">
+                                <span>Upload PDFs</span>
+                                <input type="file" id="testPdf" accept="application/pdf" multiple>
+                            </label>
+                        </div>
+                    </div>
+                    <!-- Add test progress section -->
+                    <div id="testProgress" style="display: none;">
+                        <div class="progress-header">
+                            <h3>Testing Progress</h3>
+                            <span class="test-counter">
+                                Processing: <span id="processedCount">0</span>/<span id="totalCount">0</span>
+                            </span>
+                        </div>
+                        <div class="progress-bar-container">
+                            <div class="progress-bar">
+                                <span class="progress-text">0%</span>
+                            </div>
+                        </div>
+                        <div class="time-estimate">
+                            Estimated time remaining: <span id="testTimeRemaining">Calculating...</span>
+                        </div>
+                    </div>
+                    
+                    <div class="test-actions">
+                        <div class="mode-toggle-container">
+                            <div class="toggle-switch">
+                                <input type="checkbox" id="modeSwitch" onclick="toggleMode()">
+                                <label for="modeSwitch" class="toggle-label">
+                                    <span class="mode ocr-mode">OCR</span>
+                                    <span class="mode screenshot-mode">Screenshot</span>
+                                    <span class="toggle-button"></span>
+                                </label>
+                            </div>
+                        </div>
+                        <button id="startTesting" class="test-btn">
+                            <i class="fas fa-play"></i>
+                            Start Testing
+                        </button>
+                        <button id="downloadResults" class="test-btn download-btn" disabled>
+                            <i class="fas fa-download"></i>
+                            Download Results
+                        </button>
+                    </div>
+<div class="test-stats">
+                        <div class="test-stat-card">
+                            <i class="fas fa-image"></i>
+                            <div class="stat-info">
+                                <span class="stat-label">Images</span>
+                                <span class="stat-count" id="testImageCount">0</span>
+                            </div>
+                        </div>
+                        <div class="test-stat-card">
+                            <i class="fas fa-video"></i>
+                            <div class="stat-info">
+                                <span class="stat-label">Videos</span>
+                                <span class="stat-count" id="testVideoCount">0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Section -->
+        <div id="right-section">
+            <div class="panel annotation-list">
+                <h3 style="color: #000000 !important;">Annotations</h3>
+                <div class="annotation-container">
+                    <table id="annotationTable">
+                        <thead>
+                            <tr>
+                                <th style="color: #000000 !important;">Class</th>
+                                <th style="color: #000000 !important;">Coordinates</th>
+                                <th style="color: #000000 !important;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="annotationsList">
+                            <!-- Annotations will be added here dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="control-panel">
+                    <div class="button-stack">
+                        <button id="clearAnnotations" class="control-btn clear-btn">
+                            Clear All Annotations
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="delete-project-section">
+        <button id="deleteProject" class="delete-project-btn">Delete Project</button>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize the application
+            initializeApp();
+        });
+
+        function clearImages() {
+            if (confirm('Are you sure you want to delete all images? This cannot be undone.')) {
+                fetch('/clear_images', {
+                    method: 'POST',
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Images cleared successfully');
+                        // Refresh the image display if needed
+                        loadImages();  // Assuming you have this function
+                    } else {
+                        alert('Error clearing images: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error clearing images');
+                });
+            }
+        }
+
+        function showRetrainingButton() {
+            document.getElementById('retrainingBtn').style.display = 'inline-block';
+        }
+
+        function handleTrainingComplete() {
+            // ... your existing training complete code ...
+            showRetrainingButton();
+        }
+
+        document.getElementById('retrainingBtn').addEventListener('click', function() {
+            if (!confirm('Are you sure you want to start retraining? This will use the existing model as a starting point.')) {
+                return;
+            }
+            
+            // Show loading state
+            this.disabled = true;
+            this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Retraining...';
+            
+            // Start retraining
+            fetch('/retraining_progress')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(`Retraining completed successfully!\n${data.message}`);
+                        // Update UI as needed
+                    } else {
+                        alert('Retraining failed: ' + (data.error || 'Unknown error'));
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error during retraining: ' + error.message);
+                })
+                .finally(() => {
+                    // Reset button state
+                    this.disabled = false;
+                    this.innerHTML = 'Start Retraining';
+                });
+        });
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add fade-in class after a short delay
+            setTimeout(() => {
+                document.body.classList.add('fade-in');
+            }, 50); // Adjust delay as needed
+        });
+    </script>
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-section">
+                <h4>About</h4>
+                <p style="color: #ffffff !important;">Advanced image annotation tool powered by machine learning for efficient data labeling and model training.</p>
+                <div class="social-links">
+                    <a href="#"><i class="fab fa-github"></i></a>
+                    <a href="#"><i class="fab fa-linkedin"></i></a>
+                    <a href="#"><i class="fab fa-twitter"></i></a>
+                </div>
+            </div>
+            
+            <div class="footer-section">
+                <h4>Quick Links</h4>
+                <ul class="footer-links">
+                    <li><a href="/"><i class="fas fa-question-circle"></i> Logout</a></li>
+                </ul>
+            </div>
+            
+            <div class="footer-section">
+                <h4>Contact</h4>
+                <ul class="footer-links">
+                    <li><a href="mailto:contact@example.com"><i class="fas fa-envelope"></i>sagar.agicha@goapl.com</a></li>
+                    <li><a href="#"><i class="fas fa-map-marker-alt"></i> Mumbai</a></li>
+                    <li><a href="#"><i class="fas fa-phone"></i>7977587238</a></li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="footer-bottom">
+            <p style="color: #ffffff !important;">&copy; 2024 Image Annotation Tool. All rights reserved.</p>
+        </div>
+    </footer>
+    <div id="classManagerModal" class="modal">
+        <div class="modal-content left-side-modal">
+            <div class="modal-header">
+                <div class="header-title">
+                    <i class="fas fa-tags"></i>
+                    <h3>Class Manager</h3>
+                </div>
+                <button class="close-btn" id="closeClassManager">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="classSearch" placeholder="Search classes...">
+                </div>
+                <div id="classList" class="class-list">
+                    <!-- Classes will be listed here dynamically -->
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html> 

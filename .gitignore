@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.env
+.vercel
+node_modules/
+static/uploads/*
+static/videos/*
+static/results/*
+annotations/*
+dataset/*
+runs/*
+*.pt 
