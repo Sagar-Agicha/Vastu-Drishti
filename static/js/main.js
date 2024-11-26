@@ -181,30 +181,43 @@ function initializeApp() {
         }
     });
 
-    // Add this for video upload handling
     document.getElementById('videoUpload').addEventListener('change', async function(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        const formData = new FormData();
-        formData.append('video', file);
-
-        try {
-            const response = await fetch('/upload_video', {
-                method: 'POST',
-                body: formData
-            });
-
-            const data = await response.json();
-            if (data.success) {
-                uploadedVideoFilename = data.filename;
-                document.getElementById('videoUploadControls').style.display = 'block';
-            } else {
-                throw new Error(data.error || 'Failed to upload video');
+        const videoUploadControls = document.getElementById('videoUploadControls');
+        if (e.target.files.length > 0) {
+            selectedVideoFile = e.target.files[0];
+            videoUploadControls.style.display = 'block';
+    
+            // Show loading indicator
+            const uploadLabel = document.querySelector('.upload-label[for="videoUpload"]');
+            uploadLabel.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+    
+            try {
+                const formData = new FormData();
+                formData.append('video', selectedVideoFile);
+    
+                const response = await fetch('/upload_video', {
+                    method: 'POST',
+                    body: formData
+                });
+    
+                const data = await response.json();
+                if (data.success) {
+                    uploadedVideoFilename = data.filename;
+                    console.log("Video uploaded:", uploadedVideoFilename);
+                } else {
+                    throw new Error(data.error || 'Upload failed');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error uploading video: ' + error.message);
+            } finally {
+                // Hide loading indicator
+                uploadLabel.innerHTML = '<i class="icon"></i> Video Upload';
             }
-        } catch (error) {
-            console.error('Error:', error);
-            alert('Error uploading video: ' + error.message);
+        } else {
+            selectedVideoFile = null;
+            uploadedVideoFilename = null;
+            videoUploadControls.style.display = 'none';
         }
     });
 }
@@ -335,40 +348,50 @@ function draw(e) {
     const currentX = (e.clientX - rect.left) / canvas.width;
     const currentY = (e.clientY - rect.top) / canvas.height;
 
-    // Clear previous drawings
+    // Clear and redraw everything
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Redraw image
+    // 1. Draw the image
     if (currentImage) {
         ctx.drawImage(currentImage, 0, 0, canvas.width, canvas.height);
     }
 
-    // Draw existing annotations
+    // 2. Draw existing annotations
     if (images[currentImageIndex] && images[currentImageIndex].annotations) {
         images[currentImageIndex].annotations.forEach(ann => {
             ctx.strokeStyle = '#00ff00';
             ctx.lineWidth = 2;
-            ctx.strokeRect(
-                ann.x * canvas.width,
-                ann.y * canvas.height,
-                ann.width * canvas.width,
-                ann.height * canvas.height
-            );
+            const x = (ann.x - ann.width/2) * canvas.width;
+            const y = (ann.y - ann.height/2) * canvas.height;
+            const w = ann.width * canvas.width;
+            const h = ann.height * canvas.height;
+            
+            ctx.beginPath();
+            ctx.rect(x, y, w, h);
+            ctx.stroke();
+
+            // Draw label
+            const label = ann.class;
+            ctx.font = '12px Arial';
+            ctx.fillStyle = '#00ff00';
+            ctx.fillText(label, x, y - 5);
         });
     }
 
-    // Draw current rectangle
+    // 3. Draw current rectangle being drawn
     ctx.strokeStyle = '#ff0000';  // Red color for current drawing
     ctx.lineWidth = 2;
     const width = currentX - startX;
     const height = currentY - startY;
-    ctx.strokeRect(
+    ctx.beginPath();
+    ctx.rect(
         startX * canvas.width,
         startY * canvas.height,
         width * canvas.width,
         height * canvas.height
     );
+    ctx.stroke();
 }
 
 function endDrawing(e) {
@@ -411,29 +434,21 @@ function showClassPopup() {
     className.focus();
 }
 
-async function saveAnnotation() {
+async function saveAnnotation(className) {
     try {
         const className = document.getElementById('className').value;
-        if (!className) {
-            console.log("No class name provided");
-            return;
-        }
-
-        if (!currentAnnotation) {
-            console.log("No current annotation to save");
+        if (!className || !currentAnnotation) {
+            console.log("Missing class name or annotation");
             return;
         }
 
         // Convert to YOLO format (center coordinates)
-        const x_center = currentAnnotation.x + (currentAnnotation.width / 2);
-        const y_center = currentAnnotation.y + (currentAnnotation.height / 2);
-        
         const annotation = {
-            x: x_center,
-            y: y_center,
+            class: className,
+            x: currentAnnotation.x + (currentAnnotation.width / 2),
+            y: currentAnnotation.y + (currentAnnotation.height / 2),
             width: currentAnnotation.width,
-            height: currentAnnotation.height,
-            class: className
+            height: currentAnnotation.height
         };
 
         if (!images[currentImageIndex].annotations) {
@@ -442,15 +457,18 @@ async function saveAnnotation() {
 
         images[currentImageIndex].annotations.push(annotation);
         
-        // Save to file
-        await saveAnnotationsToFile();
+        // Save annotations to file
+        saveAnnotationsToFile();
         
+        // Clear current annotation and hide popup
         document.getElementById('classPopup').style.display = 'none';
         currentAnnotation = null;
         
+        // Redraw canvas and update UI
         drawAnnotations();
         updateAnnotationsList();
-        updateClassList(); // Update the class list after successful save
+        
+        console.log("Annotation saved:", annotation); // Debug log
     } catch (error) {
         console.error('Error in saveAnnotation:', error);
         alert('Error saving annotation: ' + error.message);
@@ -465,6 +483,7 @@ function updateAnnotationsList() {
     annotations.forEach((ann, index) => {
         const row = document.createElement('tr');
         row.innerHTML = `
+            <td>${index + 1}</td> <!-- Display unique number -->
             <td>${ann.class}</td>
             <td>x: ${ann.x.toFixed(3)}, y: ${ann.y.toFixed(3)}, w: ${ann.width.toFixed(3)}, h: ${ann.height.toFixed(3)}</td>
             <td>
@@ -578,6 +597,7 @@ function drawAnnotations() {
     // Draw all annotations
     if (images[currentImageIndex] && images[currentImageIndex].annotations) {
         images[currentImageIndex].annotations.forEach(ann => {
+            // Draw box
             ctx.strokeStyle = '#00ff00';  // Green color
             ctx.lineWidth = 2;
             
@@ -587,12 +607,23 @@ function drawAnnotations() {
             const w = ann.width * canvas.width;
             const h = ann.height * canvas.height;
             
-            ctx.strokeRect(x, y, w, h);
+            // Draw rectangle
+            ctx.beginPath();
+            ctx.rect(x, y, w, h);
+            ctx.stroke();
 
-            // Draw label
-            ctx.fillStyle = '#00ff00';
+            // Draw label background
+            const label = ann.class;
             ctx.font = '12px Arial';
-            ctx.fillText(ann.class, x, y - 5);
+            const textWidth = ctx.measureText(label).width;
+            const padding = 2;
+            
+            ctx.fillStyle = '#00ff00';
+            ctx.fillRect(x, y - 20, textWidth + (padding * 2), 20);
+
+            // Draw label text
+            ctx.fillStyle = '#000000';
+            ctx.fillText(label, x + padding, y - 5);
         });
     }
 }
@@ -667,53 +698,79 @@ function showPreviousImage() {
     }
 }
 
-async function saveAnnotationsToFile() {
-    if (!images[currentImageIndex]) {
-        console.log("No current image to save annotations for");
-        return;
-    }
-
-    const imageFileName = images[currentImageIndex].name;
-    if (!imageFileName) {
-        console.error("No valid image filename");
-        throw new Error("Invalid image filename");
-    }
-
-    const annotations = images[currentImageIndex].annotations || [];
-
-    // Convert annotations to YOLO format
-    const yoloAnnotations = annotations.map(ann => ({
-        class_name: ann.class,
-        // Keep the original coordinates format
-        coordinates: `${ann.x.toFixed(6)} ${ann.y.toFixed(6)} ${ann.width.toFixed(6)} ${ann.height.toFixed(6)}`
-    }));
-
+function saveAnnotation() {
     try {
-        console.log("Saving annotations for:", imageFileName, yoloAnnotations);
+        const className = document.getElementById('className').value;
+        if (!className || !currentAnnotation) {
+            console.log("Missing class name or annotation");
+            return;
+        }
+
+        // Convert to YOLO format (center coordinates)
+        const annotation = {
+            class: className,
+            x: currentAnnotation.x + (currentAnnotation.width / 2),
+            y: currentAnnotation.y + (currentAnnotation.height / 2),
+            width: currentAnnotation.width,
+            height: currentAnnotation.height
+        };
+
+        if (!images[currentImageIndex].annotations) {
+            images[currentImageIndex].annotations = [];
+        }
+
+        images[currentImageIndex].annotations.push(annotation);
+        
+        // Save annotations to file
+        saveAnnotationsToFile();
+        
+        // Clear current annotation and hide popup
+        document.getElementById('classPopup').style.display = 'none';
+        currentAnnotation = null;
+        
+        // Redraw canvas and update UI
+        drawAnnotations();
+        updateAnnotationsList();
+        
+        console.log("Annotation saved:", annotation); // Debug log
+    } catch (error) {
+        console.error('Error in saveAnnotation:', error);
+        alert('Error saving annotation: ' + error.message);
+    }
+}
+
+async function saveAnnotationsToFile() {
+    try {
+        const currentImage = images[currentImageIndex];
+        if (!currentImage) {
+            throw new Error('No image selected');
+        }
+
+        // Create data object for server
+        const data = {
+            image_file: currentImage.name,
+            annotations: currentImage.annotations || []
+        };
+
+        console.log('Sending annotation data:', data);  // Debug log
+
         const response = await fetch('/save_annotations', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
+                'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-                image_file: imageFileName,
-                annotations: yoloAnnotations
-            })
+            body: JSON.stringify(data)
         });
 
-        const data = await response.json();
+        const result = await response.json();
         
         if (!response.ok) {
-            console.error('Server response:', data);
-            throw new Error(data.error || `HTTP error! status: ${response.status}`);
+            throw new Error(result.error || 'Failed to save annotations');
         }
 
-        if (!data.success) {
-            throw new Error(data.error || 'Failed to save annotations');
-        }
+        console.log('Annotations saved successfully:', result);
+        return result;
 
-        console.log("Annotations saved successfully");
-        return true;
     } catch (error) {
         console.error('Error saving annotations:', error);
         throw new Error('Failed to save annotations: ' + error.message);
@@ -1128,6 +1185,7 @@ function updateAnnotationsList() {
     images[currentImageIndex].annotations.forEach((ann, index) => {
         const row = document.createElement('tr');
         row.innerHTML = `
+            <td>${index + 1}</td> <!-- Display unique number -->
             <td>${ann.class}</td>
             <td>
                 x: ${ann.x.toFixed(3)}<br>
@@ -1162,21 +1220,6 @@ document.querySelector('.clear-btn').style.cssText = `
     font-weight: bold;
     transition: all 0.3s ease;
 `;
-
-// Add this to your existing JavaScript
-document.getElementById('videoUpload').addEventListener('change', function(e) {
-    const videoUploadControls = document.getElementById('videoUploadControls');
-    if (e.target.files.length > 0) {
-        selectedVideoFile = e.target.files[0];
-        videoUploadControls.style.display = 'block';
-        // Upload the video immediately
-        uploadVideo(selectedVideoFile);
-    } else {
-        selectedVideoFile = null;
-        uploadedVideoFilename = null;
-        videoUploadControls.style.display = 'none';
-    }
-});
 
 document.getElementById('processVideoBtn').addEventListener('click', async function() {
     if (!uploadedVideoFilename) {
@@ -1388,33 +1431,6 @@ async function showVideoDetails(filename) {
         alert('Error getting video details: ' + error.message);
     }
 }
-
-// Make sure uploadedVideoFilename is set when a video is uploaded
-document.getElementById('videoUpload').addEventListener('change', async function(e) {
-    if (this.files && this.files[0]) {
-        const formData = new FormData();
-        formData.append('video', this.files[0]);
-        
-        try {
-            const response = await fetch('/upload_video', {
-                method: 'POST',
-                body: formData
-            });
-            
-            const data = await response.json();
-            if (data.success) {
-                uploadedVideoFilename = data.filename;  // Save the filename
-                document.getElementById('videoUploadControls').style.display = 'block';
-                console.log("Video uploaded:", uploadedVideoFilename);
-            } else {
-                throw new Error(data.error || 'Upload failed');
-            }
-        } catch (error) {
-            console.error('Error:', error);
-            alert('Error uploading video: ' + error.message);
-        }
-    }
-});
 
 async function uploadTestFiles(e) {
     let files = Array.from(e.target.files);

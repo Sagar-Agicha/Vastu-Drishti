@@ -331,15 +331,17 @@ def extract_frames(video_path, output_dir, skip_frames=2):
 @app.route('/save_annotations', methods=['POST'])
 def save_annotations():
     try:
-        data = request.json
+        data = request.get_json()
+        logger.debug(f"Received annotation data: {data}")  # Debug log
+        
         if not data:
             return jsonify({'success': False, 'error': 'No data received'}), 400
             
         image_file = data.get('image_file')
-        annotations = data.get('annotations')
+        annotations = data.get('annotations', [])
         
-        if not image_file or not annotations:
-            return jsonify({'success': False, 'error': 'Missing image_file or annotations'}), 400
+        if not image_file:
+            return jsonify({'success': False, 'error': 'Missing image_file'}), 400
 
         # Ensure ANNOTATIONS_FOLDER exists
         os.makedirs(ANNOTATIONS_FOLDER, exist_ok=True)
@@ -347,56 +349,58 @@ def save_annotations():
         # Get base filename without extension
         base_filename = os.path.splitext(image_file)[0]
         
-        # Update class labels
-        updated = False
-        for ann in annotations:
-            class_name = ann.get('class_name')
-            if not class_name:
-                continue
-                
-            if class_name not in class_labels:
-                class_labels[class_name] = len(class_labels)
-                updated = True
+        # Create a set of existing labels
+        existing_labels = set()
+        if os.path.exists(LABELS_FILE):
+            with open(LABELS_FILE, 'r') as f:
+                existing_labels = set(line.strip() for line in f.readlines())
         
-        # Save updated labels if necessary
-        if updated:
-            try:
-                with open(LABELS_FILE, 'w') as f:
-                    for label in class_labels:
-                        f.write(f"{label}\n")
-            except Exception as e:
-                print(f"Error saving labels file: {str(e)}")
-                return jsonify({'success': False, 'error': f'Error saving labels: {str(e)}'}), 500
+        # Collect new labels
+        new_labels = set()
+        for ann in annotations:
+            class_name = ann.get('class')
+            if class_name and class_name not in existing_labels:
+                new_labels.add(class_name)
+        
+        # Update labels file if there are new labels
+        if new_labels:
+            all_labels = sorted(existing_labels.union(new_labels))
+            with open(LABELS_FILE, 'w') as f:
+                for label in all_labels:
+                    f.write(f"{label}\n")
+            
+            # Update class_labels dictionary
+            global class_labels
+            class_labels = OrderedDict((label, idx) for idx, label in enumerate(all_labels))
         
         # Create YOLO format annotations
-        try:
-            yolo_annotations = []
-            for ann in annotations:
-                class_name = ann.get('class_name')
-                if not class_name or class_name not in class_labels:
-                    continue
-                    
-                class_idx = class_labels[class_name]
-                coordinates = ann.get('coordinates', '')
-                yolo_annotations.append(f"{class_idx} {coordinates}")
-            
-            # Save annotations to file
-            annotation_path = os.path.join(ANNOTATIONS_FOLDER, f"{base_filename}.txt")
-            with open(annotation_path, 'w') as f:
-                f.write('\n'.join(yolo_annotations))
+        yolo_annotations = []
+        for ann in annotations:
+            class_name = ann.get('class')
+            if not class_name or class_name not in class_labels:
+                continue
                 
-            return jsonify({
-                'success': True, 
-                'message': 'Annotations saved successfully',
-                'annotations_path': annotation_path
-            })
+            class_idx = class_labels[class_name]
+            x = float(ann.get('x', 0))
+            y = float(ann.get('y', 0))
+            w = float(ann.get('width', 0))
+            h = float(ann.get('height', 0))
             
-        except Exception as e:
-            print(f"Error saving annotation file: {str(e)}")
-            return jsonify({'success': False, 'error': f'Error saving annotation file: {str(e)}'}), 500
-    
+            yolo_annotations.append(f"{class_idx} {x:.6f} {y:.6f} {w:.6f} {h:.6f}")
+        
+        # Save annotations to file
+        annotation_path = os.path.join(ANNOTATIONS_FOLDER, f"{base_filename}.txt")
+        with open(annotation_path, 'w') as f:
+            f.write('\n'.join(yolo_annotations))
+        
+        return jsonify({
+            'success': True,
+            'message': 'Annotations saved successfully',
+            'annotations_path': annotation_path
+        })
+        
     except Exception as e:
-        print(f"Error in save_annotations: {str(e)}")
+        logger.error(f"Error in save_annotations: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/get_annotations/<image_file>')
