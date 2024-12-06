@@ -26,7 +26,7 @@ import tempfile
 app = Flask(__name__)
 app.secret_key = 'SAGAR'  # Add this line
 
-pytesseract.pytesseract.tesseract_cmd = r"/usr/bin/tesseract"
+pytesseract.pytesseract.tesseract_cmd = r"C:\Users\Sagar\AppData\Local\Programs\Tesseract-OCR\tesseract.exe"
 
 # Add with other configurations
 DOWNLOAD_FOLDER = os.path.join(app.static_folder, 'downloads')
@@ -1039,7 +1039,7 @@ async def process_video_with_ocr(video_path, model, all_classes, interval_second
                 break
 
             # Process frame only at specified interval
-            if frame_count % frame_interval == 10:
+            if frame_count % frame_interval == 2:
                 # Calculate current time in seconds
                 current_time = frame_count / fps
                 
