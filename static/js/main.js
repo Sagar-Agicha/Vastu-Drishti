@@ -185,33 +185,63 @@ function initializeApp() {
         const videoUploadControls = document.getElementById('videoUploadControls');
         if (e.target.files.length > 0) {
             selectedVideoFile = e.target.files[0];
+            
+            // Add file size check
+            const maxSize = 600 * 1024 * 1024; // 400MB in bytes
+            if (selectedVideoFile.size > maxSize) {
+                showNotification('Video file is too large. Maximum size is 400MB.', 'error');
+                e.target.value = ''; // Reset file input
+                return;
+            }
+
             videoUploadControls.style.display = 'block';
-    
+
             // Show loading indicator
             const uploadLabel = document.querySelector('.upload-label[for="videoUpload"]');
             uploadLabel.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
-    
+
             try {
                 const formData = new FormData();
                 formData.append('video', selectedVideoFile);
-    
+
                 const response = await fetch('/upload_video', {
                     method: 'POST',
-                    body: formData
+                    body: formData,
+                    // Add timeout and signal handling
+                    timeout: 300000, // 5 minutes timeout
+                    signal: AbortSignal.timeout(300000)
                 });
-    
+
+                // Check if response is JSON
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error('Server returned invalid response format');
+                }
+
                 const data = await response.json();
                 if (data.success) {
                     uploadedVideoFilename = data.filename;
                     console.log("Video uploaded:", uploadedVideoFilename);
+                    showNotification('Video uploaded successfully', 'success');
                 } else {
                     throw new Error(data.error || 'Upload failed');
                 }
             } catch (error) {
                 console.error('Error:', error);
-                alert('Error uploading video: ' + error.message);
+                let errorMessage = 'Error uploading video: ';
+                
+                if (error.name === 'TimeoutError') {
+                    errorMessage += 'Upload timed out. Please try a smaller file.';
+                } else if (error.message.includes('invalid response format')) {
+                    errorMessage += 'Server error. The file may be too large.';
+                } else {
+                    errorMessage += error.message;
+                }
+                
+                showNotification(errorMessage, 'error');
+                e.target.value = ''; // Reset file input
             } finally {
-                // Hide loading indicator
+                // Reset upload label
                 uploadLabel.innerHTML = '<i class="icon"></i> Video Upload';
             }
         } else {
